@@ -81,7 +81,7 @@ async function generateComment(formData, apiKey) {
     }
 
     const prompt = `
-        Agis en tant que professeur principal expérimenté et pédagogue. Rédige une appréciation personnalisée, constructive et nuancée pour le bulletin scolaire d'un élève.
+        Agis en tant que professeur principal. Rédige une appréciation pour un bulletin scolaire. L'objectif est de fournir un commentaire clair, constructif et facile à comprendre pour les parents.
 
         Informations sur l'élève :
         - Prénom : ${studentName}
@@ -91,13 +91,14 @@ async function generateComment(formData, apiKey) {
         ${detailsPromptSection}
 
         Consignes pour la rédaction :
-        1.  Le ton de l'appréciation doit être impérativement : **${tone}**.
-        2.  L'appréciation doit faire environ **${commentLength} lignes**.
-        3.  Structure l'appréciation en abordant TOUS les volets demandés (ceux avec détails et ceux à générer) dans un ordre logique et fluide. Ne mentionne pas explicitement le nom des volets (ex: "Concernant son comportement..."). L'ensemble doit être un paragraphe unique et cohérent.
-        4.  Commence directement par l'appréciation, sans formule d'introduction comme "Voici une proposition :".
-        5.  Personnalise le commentaire en utilisant le prénom de l'élève au moins une fois de manière naturelle.
-        6.  Assure-toi que le commentaire est cohérent avec toutes les informations fournies.
-        7.  Transforme les "axes d'amélioration" en conseils positifs et réalisables plutôt qu'en reproches.
+        1.  **Utilise des phrases simples et un vocabulaire direct, facilement compréhensible par tous.** Évite le jargon pédagogique.
+        2.  Le ton de l'appréciation doit être impérativement : **${tone}**.
+        3.  L'appréciation doit faire environ **${commentLength} lignes**.
+        4.  Structure l'appréciation en abordant TOUS les volets demandés (ceux avec détails et ceux à générer) dans un ordre logique et fluide. Ne mentionne pas explicitement le nom des volets (ex: "Concernant son comportement..."). L'ensemble doit être un paragraphe unique et cohérent.
+        5.  Commence directement par l'appréciation, sans formule d'introduction comme "Voici une proposition :".
+        6.  Personnalise le commentaire en utilisant le prénom de l'élève au moins une fois de manière naturelle.
+        7.  Assure-toi que le commentaire est cohérent avec toutes les informations fournies.
+        8.  Transforme les "axes d'amélioration" en conseils positifs et réalisables plutôt qu'en reproches.
 
         Ne retourne que le texte de l'appréciation finale.
     `;
