@@ -26,6 +26,9 @@ const resultActions = document.getElementById('result-actions');
 const savedCountContainer = document.getElementById('saved-count-container');
 const savedCountEl = document.getElementById('saved-count');
 const downloadCountEl = document.getElementById('download-count');
+const apiKeyOverlay = document.getElementById('api-key-overlay');
+const selectApiKeyButton = document.getElementById('select-api-key-button');
+const mainContent = document.querySelector('main');
 
 // --- GEMINI SERVICE ---
 async function generateComment(formData) {
@@ -109,6 +112,9 @@ async function generateComment(formData) {
         return response.text.trim();
     } catch (error) {
         console.error("Error generating comment:", error);
+        if (error.message && (error.message.includes('API key not valid') || error.message.includes('permission') || error.message.includes('not found'))) {
+             throw new Error("Requested entity was not found.");
+        }
         throw new Error("Une erreur est survenue lors de la génération de l'appréciation. Veuillez réessayer.");
     }
 }
@@ -204,7 +210,13 @@ async function handleGenerate(e) {
         updateSavedCount();
 
     } catch (err) {
-        apiErrorContainer.textContent = err.message;
+        if (err.message && err.message.includes('Requested entity was not found')) {
+            apiErrorContainer.textContent = "La clé API sélectionnée n'est pas valide ou n'a pas les autorisations nécessaires. Veuillez en sélectionner une nouvelle.";
+            apiKeyOverlay.classList.remove('hidden');
+            mainContent.classList.add('hidden');
+        } else {
+            apiErrorContainer.textContent = err.message;
+        }
         apiErrorContainer.classList.remove('hidden');
         resultPlaceholder.classList.remove('hidden');
     } finally {
@@ -312,13 +324,29 @@ function handleSuggestionClick(e) {
     textarea.focus();
 }
 
+async function handleSelectApiKey() {
+    await window.aistudio.openSelectKey();
+    // Assume success and show the app. If the user cancels, the next API call will fail and re-trigger the dialog.
+    apiKeyOverlay.classList.add('hidden');
+    mainContent.classList.remove('hidden');
+}
+
 // --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
+async function initializeApp() {
+    if (window.aistudio && await window.aistudio.hasSelectedApiKey()) {
+        apiKeyOverlay.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+    } else {
+        apiKeyOverlay.classList.remove('hidden');
+        mainContent.classList.add('hidden');
+    }
+
     form.addEventListener('submit', handleGenerate);
     resetButton.addEventListener('click', handleReset);
     copyButton.addEventListener('click', handleCopy);
     downloadButton.addEventListener('click', handleDownloadAll);
     document.body.addEventListener('click', handleSuggestionClick);
+    selectApiKeyButton.addEventListener('click', handleSelectApiKey);
 
     // Initial setup
     renderSuggestionKeywords();
@@ -328,4 +356,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if(!generatedCommentEl.textContent) {
          copyButton.classList.add('hidden');
     }
-});
+}
+
+document.addEventListener('DOMContentLoaded', initializeApp);
