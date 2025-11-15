@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 // --- CONSTANTS ---
@@ -8,9 +7,12 @@ const SUGGESTION_KEYWORDS = {
     strengths: ['curiosité', 'rigueur', 'analyse', 'logique', 'créativité', 'participation active', 'esprit de synthèse', 'aisance à l\'oral', 'bonnes bases', 'solides compétences'],
     areasForImprovement: ['concentration', 'apprendre les leçons', 'soigner le travail', 'participer davantage', 'oser poser des questions', 'gagner en autonomie', 'approfondir la réflexion', 'être plus régulier'],
 };
+const API_KEY_SESSION_STORAGE = 'gemini-api-key';
 
 // --- STATE ---
 let allGeneratedComments = [];
+let userApiKey = null;
+const isAiStudio = !!window.aistudio;
 
 // --- DOM ELEMENTS ---
 const form = document.getElementById('comment-form');
@@ -26,48 +28,44 @@ const resultActions = document.getElementById('result-actions');
 const savedCountContainer = document.getElementById('saved-count-container');
 const savedCountEl = document.getElementById('saved-count');
 const downloadCountEl = document.getElementById('download-count');
-const apiKeyOverlay = document.getElementById('api-key-overlay');
-const selectApiKeyButton = document.getElementById('select-api-key-button');
 const mainContent = document.querySelector('main');
 
-// --- GEMINI SERVICE ---
-async function generateComment(formData) {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// API Key Modal Elements
+const apiKeyOverlay = document.getElementById('api-key-overlay');
+const aistudioPrompt = document.getElementById('aistudio-key-prompt');
+const selectApiKeyButton = document.getElementById('select-api-key-button');
+const manualPrompt = document.getElementById('manual-key-prompt');
+const manualKeyForm = document.getElementById('manual-key-form');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const manualKeyError = document.getElementById('manual-key-error');
 
+
+// --- GEMINI SERVICE ---
+async function generateComment(formData, apiKey) {
     const {
-        studentName,
-        subject,
-        gender,
-        performanceLevel,
-        comportement,
-        travail,
-        strengths,
-        areasForImprovement,
-        tone,
-        commentSections,
-        commentLength
+        studentName, subject, gender, performanceLevel, comportement,
+        travail, strengths, areasForImprovement, tone,
+        commentSections, commentLength
     } = formData;
 
-    const sectionsWithDetails = [];
-    const sectionsToGenerate = [];
+    const buildSection = (sections, details, detailsLabel, sectionName) => {
+        if (sections.includes(sectionName.toUpperCase())) {
+            if (details.trim()) return { withDetails: `- ${detailsLabel} (détails fournis) : "${details}"`, toGenerate: null };
+            return { withDetails: null, toGenerate: detailsLabel };
+        }
+        return { withDetails: null, toGenerate: null };
+    };
 
-    if (commentSections.includes('COMPORTEMENT')) {
-        if (comportement.trim()) sectionsWithDetails.push(`- Comportement en classe (détails fournis) : "${comportement}"`);
-        else sectionsToGenerate.push('Comportement');
-    }
-    if (commentSections.includes('TRAVAIL')) {
-        if (travail.trim()) sectionsWithDetails.push(`- Investissement et méthode de travail (détails fournis) : "${travail}"`);
-        else sectionsToGenerate.push('Travail / Investissement');
-    }
-    if (commentSections.includes('NIVEAU')) {
-        if (strengths.trim()) sectionsWithDetails.push(`- Points forts et compétences (détails fournis) : "${strengths}"`);
-        else sectionsToGenerate.push('Niveau / Compétences');
-    }
-    if (commentSections.includes('CONSEILS')) {
-        if (areasForImprovement.trim()) sectionsWithDetails.push(`- Axes d'amélioration et conseils (détails fournis) : "${areasForImprovement}"`);
-        else sectionsToGenerate.push('Conseils / Progression');
-    }
+    const sections = [
+        buildSection(commentSections, comportement, 'Comportement en classe', 'COMPORTEMENT'),
+        buildSection(commentSections, travail, 'Investissement et méthode de travail', 'TRAVAIL'),
+        buildSection(commentSections, strengths, 'Points forts et compétences', 'NIVEAU'),
+        buildSection(commentSections, areasForImprovement, 'Axes d\'amélioration et conseils', 'CONSEILS')
+    ];
 
+    const sectionsWithDetails = sections.map(s => s.withDetails).filter(Boolean);
+    const sectionsToGenerate = sections.map(s => s.toGenerate).filter(Boolean);
+    
     let detailsPromptSection = '';
     if (sectionsWithDetails.length > 0) {
         detailsPromptSection += `
@@ -103,8 +101,13 @@ async function generateComment(formData) {
 
         Ne retourne que le texte de l'appréciation finale.
     `;
-
+    
     try {
+        const effectiveApiKey = isAiStudio ? process.env.API_KEY : apiKey;
+        if (!effectiveApiKey) {
+            throw new Error("API Key is missing.");
+        }
+        const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
@@ -112,10 +115,10 @@ async function generateComment(formData) {
         return response.text.trim();
     } catch (error) {
         console.error("Error generating comment:", error);
-        if (error.message && (error.message.includes('API key not valid') || error.message.includes('permission') || error.message.includes('not found'))) {
-             throw new Error("Requested entity was not found.");
+        if (error.message && (error.message.includes('API key not valid') || error.message.includes('permission') || error.message.includes('not found') || error.message.includes('API Key is missing') || error.message.includes("API key and token authentication are disabled"))) {
+             throw new Error("Invalid API Key");
         }
-        throw new Error("Une erreur est survenue lors de la génération de l'appréciation. Veuillez réessayer.");
+        throw new Error("Une erreur est survenue lors de la génération. Veuillez réessayer.");
     }
 }
 
@@ -136,49 +139,62 @@ function setLoadingState(isLoading) {
 
 function validateForm() {
     let isValid = true;
-    // Clear previous errors
     document.querySelectorAll('[id$="-error"]').forEach(el => {
         el.textContent = '';
         el.classList.add('hidden');
     });
-     document.querySelectorAll('input[required], select[required]').forEach(el => {
+    document.querySelectorAll('input[required], select[required]').forEach(el => {
         el.classList.remove('border-red-500');
     });
 
     const studentName = document.getElementById('studentName');
     if (!studentName.value.trim()) {
-        const errorEl = document.getElementById('studentName-error');
-        errorEl.textContent = "Le prénom de l'élève est requis.";
-        errorEl.classList.remove('hidden');
+        document.getElementById('studentName-error').textContent = "Le prénom de l'élève est requis.";
+        document.getElementById('studentName-error').classList.remove('hidden');
         studentName.classList.add('border-red-500');
         isValid = false;
     }
 
     const subject = document.getElementById('subject');
     if (!subject.value.trim()) {
-        const errorEl = document.getElementById('subject-error');
-        errorEl.textContent = "La matière est requise.";
-        errorEl.classList.remove('hidden');
+        document.getElementById('subject-error').textContent = "La matière est requise.";
+        document.getElementById('subject-error').classList.remove('hidden');
         subject.classList.add('border-red-500');
         isValid = false;
     }
 
-    const checkedSections = form.querySelectorAll('input[name="commentSections"]:checked').length;
-    if (checkedSections === 0) {
-        const errorEl = document.getElementById('commentSections-error');
-        errorEl.textContent = "Veuillez sélectionner au moins un volet.";
-        errorEl.classList.remove('hidden');
+    if (form.querySelectorAll('input[name="commentSections"]:checked').length === 0) {
+        document.getElementById('commentSections-error').textContent = "Veuillez sélectionner au moins un volet.";
+        document.getElementById('commentSections-error').classList.remove('hidden');
         isValid = false;
     }
 
     return isValid;
 }
 
+function handleInvalidApiKey() {
+    mainContent.classList.add('hidden');
+    apiKeyOverlay.classList.remove('hidden');
+
+    if (isAiStudio) {
+        aistudioPrompt.classList.remove('hidden');
+        manualPrompt.classList.add('hidden');
+        apiErrorContainer.textContent = "La clé API sélectionnée n'est pas valide. Veuillez en sélectionner une nouvelle.";
+    } else {
+        sessionStorage.removeItem(API_KEY_SESSION_STORAGE);
+        userApiKey = null;
+        manualPrompt.classList.remove('hidden');
+        aistudioPrompt.classList.add('hidden');
+        manualKeyError.textContent = "La clé API fournie n'est pas valide. Veuillez réessayer.";
+        manualKeyError.classList.remove('hidden');
+        apiKeyInput.value = '';
+    }
+}
+
+
 async function handleGenerate(e) {
     e.preventDefault();
-    if (!validateForm()) {
-        return;
-    }
+    if (!validateForm()) return;
 
     setLoadingState(true);
 
@@ -197,7 +213,7 @@ async function handleGenerate(e) {
     };
 
     try {
-        const comment = await generateComment(formData);
+        const comment = await generateComment(formData, userApiKey);
         generatedCommentEl.textContent = comment;
         resultActions.classList.remove('hidden');
         copyButton.classList.remove('hidden');
@@ -210,14 +226,12 @@ async function handleGenerate(e) {
         updateSavedCount();
 
     } catch (err) {
-        if (err.message && err.message.includes('Requested entity was not found')) {
-            apiErrorContainer.textContent = "La clé API sélectionnée n'est pas valide ou n'a pas les autorisations nécessaires. Veuillez en sélectionner une nouvelle.";
-            apiKeyOverlay.classList.remove('hidden');
-            mainContent.classList.add('hidden');
+        if (err.message && err.message.includes('Invalid API Key')) {
+            handleInvalidApiKey();
         } else {
             apiErrorContainer.textContent = err.message;
+            apiErrorContainer.classList.remove('hidden');
         }
-        apiErrorContainer.classList.remove('hidden');
         resultPlaceholder.classList.remove('hidden');
     } finally {
         setLoadingState(false);
@@ -230,7 +244,7 @@ function handleReset() {
     apiErrorContainer.classList.add('hidden');
     resultPlaceholder.classList.remove('hidden');
     resultActions.classList.add('hidden');
-    validateForm(); // To clear errors
+    validateForm();
 }
 
 function handleCopy() {
@@ -239,34 +253,27 @@ function handleCopy() {
     
     copyButton.querySelector('.copy-text').classList.add('hidden');
     copyButton.querySelector('.copied-text').classList.remove('hidden');
-
     setTimeout(() => {
         copyButton.querySelector('.copy-text').classList.remove('hidden');
         copyButton.querySelector('.copied-text').classList.add('hidden');
     }, 2000);
 }
 
-
 function handleDownloadAll() {
     if (allGeneratedComments.length === 0) return;
 
     const escapeCsvField = (field) => {
-        let stringField = String(field);
-        let result = stringField.replace(/"/g, '""');
-        if (stringField.search(/("|,|\n)/g) >= 0) {
-            result = `"${result}"`;
-        }
-        return result;
+        let stringField = String(field).replace(/"/g, '""');
+        if (stringField.search(/("|,|\n)/g) >= 0) return `"${stringField}"`;
+        return stringField;
     };
 
     const header = ['Élève', 'Matière', 'Appréciation'];
-    const rows = allGeneratedComments.map(entry =>
-        [
-            escapeCsvField(entry.studentName),
-            escapeCsvField(entry.subject),
-            escapeCsvField(entry.comment)
-        ].join(',')
-    );
+    const rows = allGeneratedComments.map(entry => [
+        escapeCsvField(entry.studentName),
+        escapeCsvField(entry.subject),
+        escapeCsvField(entry.comment)
+    ].join(','));
 
     const csvContent = [header.join(','), ...rows].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -297,11 +304,11 @@ function updateSavedCount() {
 }
 
 function renderSuggestionKeywords() {
-    for (const field in SUGGESTION_KEYWORDS) {
+    Object.entries(SUGGESTION_KEYWORDS).forEach(([field, keywords]) => {
         const container = document.getElementById(`suggestions-${field}`);
         if (container) {
-            container.innerHTML = ''; // Clear previous suggestions
-            SUGGESTION_KEYWORDS[field].forEach(keyword => {
+            container.innerHTML = '';
+            keywords.forEach(keyword => {
                 const span = document.createElement('span');
                 span.dataset.field = field;
                 span.dataset.keyword = keyword;
@@ -310,7 +317,7 @@ function renderSuggestionKeywords() {
                 container.appendChild(span);
             });
         }
-    }
+    });
 }
 
 function handleSuggestionClick(e) {
@@ -318,44 +325,67 @@ function handleSuggestionClick(e) {
     
     const { field, keyword } = e.target.dataset;
     const textarea = document.getElementById(field);
-    const currentValue = textarea.value.trim();
-    // Add with a comma for better separation
-    textarea.value = currentValue ? `${currentValue}, ${keyword}` : keyword;
+    textarea.value = textarea.value.trim() ? `${textarea.value.trim()}, ${keyword}` : keyword;
     textarea.focus();
 }
 
 async function handleSelectApiKey() {
-    await window.aistudio.openSelectKey();
-    // Assume success and show the app. If the user cancels, the next API call will fail and re-trigger the dialog.
-    apiKeyOverlay.classList.add('hidden');
-    mainContent.classList.remove('hidden');
+    try {
+        await window.aistudio.openSelectKey();
+        apiKeyOverlay.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+    } catch(e) {
+        console.error("Could not open API key selection:", e);
+    }
+}
+
+function handleManualKeySubmit(e) {
+    e.preventDefault();
+    const key = apiKeyInput.value.trim();
+    if (key) {
+        userApiKey = key;
+        sessionStorage.setItem(API_KEY_SESSION_STORAGE, key);
+        apiKeyOverlay.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+        manualKeyError.classList.add('hidden');
+    } else {
+        manualKeyError.textContent = "Veuillez entrer une clé API.";
+        manualKeyError.classList.remove('hidden');
+    }
 }
 
 // --- INITIALIZATION ---
 async function initializeApp() {
-    if (window.aistudio && await window.aistudio.hasSelectedApiKey()) {
-        apiKeyOverlay.classList.add('hidden');
-        mainContent.classList.remove('hidden');
-    } else {
-        apiKeyOverlay.classList.remove('hidden');
-        mainContent.classList.add('hidden');
-    }
-
     form.addEventListener('submit', handleGenerate);
     resetButton.addEventListener('click', handleReset);
     copyButton.addEventListener('click', handleCopy);
     downloadButton.addEventListener('click', handleDownloadAll);
     document.body.addEventListener('click', handleSuggestionClick);
-    selectApiKeyButton.addEventListener('click', handleSelectApiKey);
 
-    // Initial setup
+    if (isAiStudio) {
+        aistudioPrompt.classList.remove('hidden');
+        selectApiKeyButton.addEventListener('click', handleSelectApiKey);
+        
+        if (await window.aistudio.hasSelectedApiKey()) {
+            mainContent.classList.remove('hidden');
+        } else {
+            apiKeyOverlay.classList.remove('hidden');
+        }
+    } else {
+        manualPrompt.classList.remove('hidden');
+        manualKeyForm.addEventListener('submit', handleManualKeySubmit);
+        const savedKey = sessionStorage.getItem(API_KEY_SESSION_STORAGE);
+        if (savedKey) {
+            userApiKey = savedKey;
+            mainContent.classList.remove('hidden');
+        } else {
+            apiKeyOverlay.classList.remove('hidden');
+        }
+    }
+
     renderSuggestionKeywords();
-    if (allGeneratedComments.length === 0) {
-        downloadButton.classList.add('hidden');
-    }
-    if(!generatedCommentEl.textContent) {
-         copyButton.classList.add('hidden');
-    }
+    if (allGeneratedComments.length === 0) downloadButton.classList.add('hidden');
+    if(!generatedCommentEl.textContent) copyButton.classList.add('hidden');
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);

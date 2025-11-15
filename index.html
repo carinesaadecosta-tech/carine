@@ -20,12 +20,33 @@
 <body class="bg-slate-50 text-slate-800">
 
     <div id="api-key-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-slate-200">
+        <!-- AI Studio Mode -->
+        <div id="aistudio-key-prompt" class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-slate-200 hidden">
             <h2 class="text-2xl font-bold text-slate-900 mb-4">API Key Requise</h2>
             <p class="text-slate-600 mb-6">Pour utiliser cette application, veuillez sélectionner une clé API Gemini. Pour plus d'informations sur la facturation, consultez la <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">documentation</a>.</p>
             <button id="select-api-key-button" class="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
                 Sélectionner une Clé API
             </button>
+        </div>
+
+        <!-- Manual Key Input Mode -->
+        <div id="manual-key-prompt" class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 hidden">
+            <h2 class="text-2xl font-bold text-slate-900 mb-4">Entrez votre Clé API Gemini</h2>
+            <p class="text-slate-600 mb-6">
+                Veuillez entrer votre clé API Gemini pour continuer. Vous pouvez en obtenir une sur
+                <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Google AI Studio</a>.
+                Votre clé est stockée uniquement dans votre navigateur.
+            </p>
+            <form id="manual-key-form">
+                <div class="mb-4">
+                    <label for="apiKeyInput" class="sr-only">Clé API Gemini</label>
+                    <input type="password" id="apiKeyInput" name="apiKeyInput" class="w-full px-3 py-2 bg-slate-50 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition border-slate-300" placeholder="Collez votre clé API ici" required>
+                </div>
+                <p id="manual-key-error" class="mb-4 text-sm text-red-600 hidden"></p>
+                <button type="submit" class="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                    Enregistrer et Démarrer
+                </button>
+            </form>
         </div>
     </div>
 
