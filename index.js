@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 // --- CONSTANTS ---
@@ -286,12 +287,16 @@ function updateSavedCount() {
 function renderSuggestionKeywords() {
     for (const field in SUGGESTION_KEYWORDS) {
         const container = document.getElementById(`suggestions-${field}`);
-        if(container) {
-            container.innerHTML = SUGGESTION_KEYWORDS[field].map(keyword =>
-                `<button type="button" data-field="${field}" data-keyword="${keyword}" class="suggestion-btn px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-100 rounded-full hover:bg-indigo-100 hover:text-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500">
-                    ${keyword}
-                </button>`
-            ).join('');
+        if (container) {
+            container.innerHTML = ''; // Clear previous suggestions
+            SUGGESTION_KEYWORDS[field].forEach(keyword => {
+                const span = document.createElement('span');
+                span.dataset.field = field;
+                span.dataset.keyword = keyword;
+                span.textContent = keyword;
+                span.className = "suggestion-btn cursor-pointer px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-100 rounded-full hover:bg-indigo-100 hover:text-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500";
+                container.appendChild(span);
+            });
         }
     }
 }
@@ -302,7 +307,8 @@ function handleSuggestionClick(e) {
     const { field, keyword } = e.target.dataset;
     const textarea = document.getElementById(field);
     const currentValue = textarea.value.trim();
-    textarea.value = currentValue ? `${currentValue} ${keyword}` : keyword;
+    // Add with a comma for better separation
+    textarea.value = currentValue ? `${currentValue}, ${keyword}` : keyword;
     textarea.focus();
 }
 
