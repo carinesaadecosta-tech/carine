@@ -1,9 +1,10 @@
+
 import { GoogleGenAI } from "@google/genai";
 import type { FormData } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export async function generateComment(formData: FormData): Promise<string> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
     const { 
         studentName, 
         subject, 
