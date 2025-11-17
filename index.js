@@ -99,6 +99,7 @@ async function generateComment(formData, apiKey) {
         6.  Personnalise le commentaire en utilisant le prénom de l'élève au moins une fois de manière naturelle.
         7.  Assure-toi que le commentaire est cohérent avec toutes les informations fournies.
         8.  Transforme les "axes d'amélioration" en conseils positifs et réalisables plutôt qu'en reproches.
+        9.  Pour formuler les conseils, utilise des tournures de phrases impersonnelles comme "Il est encouragé à..." ou "Il gagnerait à..." au lieu de "Nous l'encourageons à...". Fais attention à l'accord en genre ("Elle est encouragée à...", "Elle gagnerait à...").
 
         Ne retourne que le texte de l'appréciation finale.
     `;
