@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 // --- CONSTANTS ---
@@ -81,27 +82,24 @@ async function generateComment(formData, apiKey) {
     }
 
     const prompt = `
-        Agis en tant que professeur principal. Rédige une appréciation pour un bulletin scolaire. L'objectif est de fournir un commentaire clair, constructif et facile à comprendre pour les parents.
+        Agis en tant que professeur principal. Rédige une appréciation pour un bulletin scolaire.
 
         Informations sur l'élève :
         - Prénom : ${studentName}
-        - Genre : ${gender}. Tu dois impérativement faire les accords en genre (masculin/féminin) nécessaires dans toute l'appréciation.
+        - Genre : ${gender} (Accords impératifs).
         - Matière : ${subject}
         - Description du niveau général : "${performanceLevel}"
         ${detailsPromptSection}
 
-        Consignes pour la rédaction :
-        1.  **Utilise des phrases simples et un vocabulaire direct, facilement compréhensible par tous.** Évite le jargon pédagogique.
-        2.  Le ton de l'appréciation doit être impérativement : **${tone}**.
-        3.  L'appréciation doit faire environ **${commentLength} lignes**.
-        4.  Structure l'appréciation en abordant TOUS les volets demandés (ceux avec détails et ceux à générer) dans un ordre logique et fluide. Ne mentionne pas explicitement le nom des volets (ex: "Concernant son comportement..."). L'ensemble doit être un paragraphe unique et cohérent.
-        5.  Commence directement par l'appréciation, sans formule d'introduction comme "Voici une proposition :".
-        6.  Personnalise le commentaire en utilisant le prénom de l'élève au moins une fois de manière naturelle.
-        7.  Assure-toi que le commentaire est cohérent avec toutes les informations fournies.
-        8.  Transforme les "axes d'amélioration" en conseils positifs et réalisables plutôt qu'en reproches.
-        9.  Pour formuler les conseils, utilise des tournures de phrases impersonnelles comme "Il est encouragé à..." ou "Il gagnerait à..." au lieu de "Nous l'encourageons à...". Fais attention à l'accord en genre ("Elle est encouragée à...", "Elle gagnerait à...").
-
-        Ne retourne que le texte de l'appréciation finale.
+        CONSIGNES STRICTES DE RÉDACTION :
+        1.  **DÉBUT OBLIGATOIRE** : Tu dois impérativement commencer la rédaction par décrire le **comportement** ou l'attitude en classe.
+        2.  **INTERDICTION** : Ne parle **pas** du niveau scolaire (notes, résultats, "bon trimestre") dans la première phrase. Le niveau ne doit être abordé qu'après le comportement.
+        3.  **FLUIDITÉ** : Fais des phrases simples et courtes, mais **reliées entre elles** par des connecteurs logiques (et, mais, car, donc) pour éviter un style trop haché ou robotique.
+        4.  **VOCABULAIRE** : Utilise des mots simples et clairs.
+        5.  Ton : ${tone}.
+        6.  Longueur : environ ${commentLength} lignes.
+        7.  Transforme les défauts en conseils courts et positifs.
+        8.  Utilise le prénom "${studentName}" au moins une fois.
     `;
     
     try {
