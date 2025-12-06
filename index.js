@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // --- CONSTANTS ---
 const SUGGESTION_KEYWORDS = {
-    comportement: ['attentif', 'sérieux', 'calme', 'respectueux', 'bavard', 'agité', 'dispersé', 'participe', 'discret', 'moteur', 'agréable'],
+    comportement: ['attentif', 'sérieux', 'calme', 'respectueux', 'bavard', 'agité', 'dispersé', 'participe', 'discret', 'dynamique', 'agréable'],
     travail: ['régulier', 'investi', 'autonome', 'volontaire', 'approfondi', 'superficiel', 'irrégulier', 'manque de méthode', 'soigné', 'brouillon', 'pertinent'],
     strengths: ['curiosité', 'rigueur', 'analyse', 'logique', 'créativité', 'participation active', 'esprit de synthèse', 'aisance à l\'oral', 'bonnes bases', 'solides compétences'],
     areasForImprovement: ['concentration', 'apprendre les leçons', 'soigner le travail', 'participer davantage', 'oser poser des questions', 'gagner en autonomie', 'approfondir la réflexion', 'être plus régulier'],
@@ -82,7 +82,7 @@ async function generateComment(formData, apiKey) {
     }
 
     const prompt = `
-        Agis en tant que professeur principal. Rédige une appréciation pour un bulletin scolaire.
+        Agis en tant que professeur principal. Rédige une appréciation scolaire unique.
 
         Informations sur l'élève :
         - Prénom : ${studentName}
@@ -91,15 +91,17 @@ async function generateComment(formData, apiKey) {
         - Description du niveau général : "${performanceLevel}"
         ${detailsPromptSection}
 
-        CONSIGNES STRICTES DE RÉDACTION :
-        1.  **DÉBUT OBLIGATOIRE** : Tu dois impérativement commencer la rédaction par décrire le **comportement** ou l'attitude en classe.
-        2.  **INTERDICTION** : Ne parle **pas** du niveau scolaire (notes, résultats, "bon trimestre") dans la première phrase. Le niveau ne doit être abordé qu'après le comportement.
-        3.  **FLUIDITÉ** : Fais des phrases simples et courtes, mais **reliées entre elles** par des connecteurs logiques (et, mais, car, donc) pour éviter un style trop haché ou robotique.
-        4.  **VOCABULAIRE** : Utilise des mots simples et clairs.
-        5.  Ton : ${tone}.
-        6.  Longueur : environ ${commentLength} lignes.
-        7.  Transforme les défauts en conseils courts et positifs.
-        8.  Utilise le prénom "${studentName}" au moins une fois.
+        CONSIGNES DE RÉDACTION PRIORITAIRES :
+        1.  **VOCABULAIRE SIMPLE** : Utilise uniquement des mots simples, courants et faciles à comprendre en français. Évite le vocabulaire complexe ou soutenu. Fais comme si tu parlais simplement aux parents.
+        2.  **STYLE DES PHRASES** : Fais des phrases courtes, simples et directes. Utilise des connexions logiques simples (ex: "cependant", "mais", "car") pour lier les idées avec fluidité.
+        3.  **DIVERSITÉ** : Utilise des synonymes variés pour éviter les répétitions, mais reste toujours dans un langage courant et accessible.
+        4.  **DÉBUT** : Commence impérativement par qualifier le comportement ou l'attitude de l'élève (ex: "${studentName} est calme...", "C'est un élève sérieux...").
+        5.  **CONTENU** : Comportement d'abord, puis travail/participation, et enfin un conseil ou encouragement.
+        6.  **TON** : ${tone}.
+        7.  **LONGUEUR** : environ ${commentLength} lignes.
+        8.  **INTERDIT** : N'utilise JAMAIS le mot "moteur" (ni "moteurs"). Si tu dois exprimer cette idée, utilise "dynamique", "actif" ou "volontaire".
+        
+        Génère une appréciation qui semble écrite par un humain, simple et naturelle.
     `;
     
     try {
@@ -111,6 +113,10 @@ async function generateComment(formData, apiKey) {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
+            config: {
+                temperature: 1.1, // Augmente la créativité et la variance
+                topP: 0.95,
+            }
         });
         return response.text.trim();
     } catch (error) {
